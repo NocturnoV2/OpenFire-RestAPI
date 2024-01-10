@@ -103,6 +103,7 @@ public class JerseyWrapper extends ResourceConfig {
             ClusteringService.class,
             GroupService.class,
             MessageService.class,
+            PacketService.class,
             MsgArchiveService.class,
             MUCRoomAffiliationsService.class,
             MUCRoomService.class,

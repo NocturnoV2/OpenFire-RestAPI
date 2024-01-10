@@ -137,7 +137,7 @@ public class SessionController {
             } else if (clientSession.getStatus() == Session.STATUS_AUTHENTICATED) {
                 status = "Authenticated";
             } else {
-                status = "Unkown";
+                status = "Unknown";
             }
             session.setSessionStatus(status);
 

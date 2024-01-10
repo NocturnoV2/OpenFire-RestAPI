@@ -21,50 +21,32 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.jivesoftware.openfire.plugin.rest.controller.MessageController;
+import org.jivesoftware.openfire.plugin.rest.controller.PacketController;
 import org.jivesoftware.openfire.plugin.rest.entity.MessageEntity;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ServiceException;
+import org.xmpp.packet.Presence;
 
 import javax.annotation.PostConstruct;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("restapi/v1/messages")
-@Tag(name = "Message", description = "Sending (chat) messages to users.")
-public class MessageService {
+@Path("restapi/v1/packets")
+@Tag(name = "Packet", description = "Sending raw XML messages to users.")
+public class PacketService {
 
-    private MessageController messageController;
+    private PacketController packetController;
 
     @PostConstruct
     public void init() {
-        messageController = MessageController.getInstance();
+        packetController = PacketController.getInstance();
     }
 
     @POST
     @Path("/users")
-    @Operation( summary = "Broadcast",
-        description = "Sends a message to all users that are currently online.",
-        responses = {
-            @ApiResponse(responseCode = "201", description = "Message is sent."),
-            @ApiResponse(responseCode = "400", description = "The message content is empty or missing."),
-        })
-    @Consumes({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
-    public Response sendBroadcastMessage(@RequestBody(description = "The message that is to be broadcast.", required = true) MessageEntity messageEntity)
-        throws ServiceException
-    {
-        messageController.sendBroadcastMessage(messageEntity);
-        return Response.status(Response.Status.CREATED).build();
-    }
-
-    @POST
-    @Path("/user/{address}")
     @Operation(
-        summary = "Messaging",
-        description = "Send a message to a single user.",
+        summary = "Packets",
+        description = "Broadcast a packet to all users that are currently online.",
         responses = {
             @ApiResponse(responseCode = "201", description = "Message is sent."),
             @ApiResponse(responseCode = "400", description = "The message content is empty or missing."),
@@ -72,19 +54,22 @@ public class MessageService {
         }
     )
     @Consumes({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public Response sendMessage(
-        @RequestBody(description = "The message that is to be broadcast.", required = true) MessageEntity messageEntity,
-        @Parameter(description =   "The (bare) JID of the message recipient.", example = "john@example.org", required = true)  @PathParam("address") String address
+    public Response sendPacket(
+        @RequestBody(description = "The message that is to be sent.", required = true) MessageEntity messageEntity,
+
+        @Parameter(description = "The (bare) JID of the message sender.", example = "alex@example.org", required = true)
+        @QueryParam("sender") String sender
+
     ) throws ServiceException {
-        messageController.sendMessageToUser(messageEntity, address, null);
+        packetController.broadcastPacket(sender, messageEntity.getBody());
         return Response.status(Response.Status.CREATED).build();
     }
 
     @POST
-    @Path("/user/{address}/{resource}")
+    @Path("/user/{user}")
     @Operation(
-        summary = "Messaging",
-        description = "Send a message to a single user.",
+        summary = "Packets",
+        description = "Send a packet to a single user.",
         responses = {
             @ApiResponse(responseCode = "201", description = "Message is sent."),
             @ApiResponse(responseCode = "400", description = "The message content is empty or missing."),
@@ -92,12 +77,42 @@ public class MessageService {
         }
     )
     @Consumes({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public Response sendMessage(
-        @RequestBody(description = "The message that is to be broadcast.", required = true) MessageEntity messageEntity,
-        @Parameter(description =   "The (bare) JID of the message recipient.", example = "john@example.org", required = true) @PathParam("address") String address,
-        @Parameter(description =   "The resource of the message recipient.", example = "123", required = true) @PathParam("resource") String resource
+    public Response sendPacket(
+        @RequestBody(description = "The message that is to be sent.", required = true) MessageEntity messageEntity,
+
+        @Parameter(description = "The (bare) JID of the message receiver.", example = "john@example.org", required = true)
+        @PathParam("user") String targetUser,
+
+        @Parameter(description = "The (bare) JID of the message sender.", example = "alex@example.org", required = true)
+        @QueryParam("sender") String sender
+
     ) throws ServiceException {
-        messageController.sendMessageToUser(messageEntity, address, resource);
+        packetController.sendPacketToUser(sender, targetUser, messageEntity.getBody());
+        return Response.status(Response.Status.CREATED).build();
+    }
+
+    @GET
+    @Path("/presence/{user}/send/{to}")
+    @Operation(
+        summary = "Packets",
+        description = "Send a packet to a single user.",
+        responses = {
+            @ApiResponse(responseCode = "201", description = "Message is sent."),
+            @ApiResponse(responseCode = "400", description = "The message content is empty or missing."),
+            @ApiResponse(responseCode = "400", description = "The message recipient is empty or invalid."),
+        }
+    )
+    @Consumes({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
+    public Response sendPresence(
+        @Parameter(description = "The username of the presence sender.", example = "", required = true)
+        @PathParam("user") String targetUser,
+
+        @Parameter(description = "The user of the presence receiver.", example = "alex", required = true)
+        @PathParam("to") String sender
+
+    ) throws ServiceException {
+        packetController.sendPresence(sender, targetUser);
+
         return Response.status(Response.Status.CREATED).build();
     }
 }
